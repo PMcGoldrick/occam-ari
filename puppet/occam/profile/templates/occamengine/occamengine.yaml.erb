@@ -11,5 +11,6 @@ dns_file: '/etc/hosts.d/dataPond.occam'
 
 ops_ip: '<%= scope.lookupvar('::ipaddress') %>'
 domain: '<%= scope.lookupvar('::domain') %>'
+os_type: '<%= scope.lookupvar('::os_type') %>'
 
 db_uri: <%= @db_uri %>

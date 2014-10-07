@@ -61,10 +61,10 @@ class profile::occamengine (
   $os_root_device       = '/dev/sda',
   $domain               = undef,
   $timezone             = 'UTC',
-  $db_type        = 'postgres',
-  $db_name        = 'occamengine',
-  $db_username    = 'occamengine',
-  $db_password    = 'occamengine',
+  $db_type              = 'postgres',
+  $db_name              = 'occamengine',
+  $db_username          = 'occamengine',
+  $db_password          = 'occamengine',
 )
 {
 
@@ -216,17 +216,66 @@ class profile::occamengine (
     mode    => '0644',
     content => template('profile/occamengine/preseed.erb.erb'),
     require => File[$oe_dirs]
-
   }
 
-  file { '/opt/occamengine/pxe/default/templates/boot_install.erb':
+  file { '/opt/occamengine/pxe/default/templates/debian_install.erb':
     ensure  => present,
     owner   => 'root',
     group   => 'root',
     mode    => '0644',
-    source  => 'puppet:///modules/profile/occamengine/boot_install.erb',
+    source  => 'puppet:///modules/profile/occamengine/debian_install.erb',
     require => File[$oe_dirs]
   }
+
+  staging::file { 'netboot-precise-linux':
+    target  => '/opt/occamengine/pxe/default/image/linux',
+    source  => 'http://archive.ubuntu.com/ubuntu/dists/precise-updates/main/installer-amd64/current/images/netboot/ubuntu-installer/amd64/linux',
+    require => [
+      File[$oe_dirs]
+    ],
+  }
+  staging::file { 'netboot-precise-initrd':
+    target  => '/opt/occamengine/pxe/default/image/initrd.gz',
+    source  => 'http://archive.ubuntu.com/ubuntu/dists/precise-updates/main/installer-amd64/current/images/netboot/ubuntu-installer/amd64/initrd.gz',
+    require => [
+      File[$oe_dirs]
+    ],
+  }
+
+  file { '/opt/occamengine/pxe/default/templates/kickstart.erb':
+    ensure  => present,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0644',
+    content => template('profile/occamengine/kickstart.erb.erb'),
+    require => File[$oe_dirs]
+  }
+
+  file { '/opt/occamengine/pxe/default/templates/redhat_install.erb':
+    ensure  => present,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0644',
+    source  => 'puppet:///modules/profile/occamengine/redhat_install.erb',
+    require => File[$oe_dirs]
+  }
+
+  staging::file { 'netboot-redhat-vmlinuz':
+    target  => '/opt/occamengine/pxe/default/image/vmlinuz',
+    source  => 'http://mirrors.kernel.org/fedora/releases/19/Fedora/x86_64/os/images/pxeboot/vmlinuz',
+    require => [
+      File[$oe_dirs]
+    ],
+  }
+
+  staging::file { 'netboot-redhat-initrd':
+    target  => '/opt/occamengine/pxe/default/image/initrd.img',
+    source  => 'http://mirrors.kernel.org/fedora/releases/19/Fedora/x86_64/os/images/pxeboot/initrd.img',
+    require => [
+      File[$oe_dirs]
+    ],
+  }
+
 
   file { '/opt/occamengine/pxe/default/templates/boot_local.erb':
     ensure  => present,
@@ -254,21 +303,6 @@ class profile::occamengine (
     content => template('profile/occamengine/occamengine.ipxe.erb'),
   }
 
-  staging::file { 'netboot-precise-linux':
-    target  => '/opt/occamengine/pxe/default/image/linux',
-    source  => 'http://archive.ubuntu.com/ubuntu/dists/precise-updates/main/installer-amd64/current/images/netboot/ubuntu-installer/amd64/linux',
-    require => [
-      File[$oe_dirs]
-    ],
-  }
-
-  staging::file { 'netboot-precise-initrd':
-    target  => '/opt/occamengine/pxe/default/image/initrd.gz',
-    source  => 'http://archive.ubuntu.com/ubuntu/dists/precise-updates/main/installer-amd64/current/images/netboot/ubuntu-installer/amd64/initrd.gz',
-    require => [
-      File[$oe_dirs]
-    ],
-  }
 
   file { '/opt/occamengine/tftp/undionly.kpxe':
     ensure => link,

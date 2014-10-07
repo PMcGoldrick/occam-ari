@@ -120,8 +120,10 @@ class Configuration
   attr_reader :environment
   attr_reader :ops_mac
   attr_reader :ops_ip
-  attr_reader :template_dir
-  attr_reader :image_dir
+  attr_reader :deb_template_dir
+  attr_reader :red_template_dir
+  attr_reader :deb_image_dir
+  attr_reader :red_image_dir
   attr_reader :http_endpoint
   attr_reader :root_password
   attr_reader :sinatra_lock
@@ -145,7 +147,7 @@ class Configuration
   attr_reader :loghttp
 
   def initialize
-    
+
     #set config and init from command line opts
     @config = '/etc/occam/occamengine.yaml'
     @init = false
@@ -165,7 +167,7 @@ class Configuration
     else
       @zone = `hostname -f `.split(".")[1]
     end
-    
+
     # set environment
     if File.exists?('/etc/occam/environment')
       @environment = File.read('/etc/occam/environment').chop
@@ -220,8 +222,10 @@ class Configuration
       @puppet_initial_runs = 5
     end
 
-    @template_dir = "#{@occamengine_dir}/pxe/#{@node_template}/templates"
-    @image_dir = "#{@occamengine_dir}/pxe/#{@node_template}/image"
+    @deb_template_dir = "#{@occamengine_dir}/pxe/debian/templates"
+    @red_template_dir = "#{@occamengine_dir}/pxe/redhat/templates"
+    @deb_image_dir = "#{@occamengine_dir}/pxe/debian/image"
+    @red_image_dir = "#{@occamengine_dir}/pxe/redhat/image"
 
     if @roles['ops'] == nil
       @roles['ops'] = {:maximum => 1, :minimum => 1, :macs => @ops_mac, :priority => 1}
@@ -604,11 +608,26 @@ class Provisioner
     b = node.get_binding
     b.eval("#{:http_endpoint} = '#{$conf.http_endpoint}'")
     return ERB.new(File.new("#{$conf.template_dir}/boot_install.erb").read).result(b)
-  end
+   end
 
   def boot_local(node)
     $conf.log.info "Node #{node.hostname} (#{node.mac}) booting from local disk"
     return ERB.new(File.new("#{$conf.template_dir}/boot_local.erb").read).result(node.get_binding)
+  end
+
+  def kickstart(hostname)
+    begin
+      $conf.log.debug "Serving kickstart for #{hostname}"
+      node = Node.first!(:hostname => hostname)
+      b = node.get_binding
+      b.eval("#{:http_endpoint} = '#{$conf.http_endpoint}'")
+      b.eval("#{:root_password} = '#{$conf.root_password}'")
+      b.eval("#{:ops_ip} = '#{$conf.ops_ip}'")
+      return ERB.new(File.new("#{$conf.template_dir}/kickstart.erb").read).result(b)
+    rescue Exception => e 
+      $conf.log.debug e.message
+      return nil
+    end
   end
 
   def preseed(hostname)
@@ -783,6 +802,15 @@ get '/api/deploy/pxe/:mac' do
   end
 end
 
+get '/api/deploy/kickstart/:hostname' do
+  response = $prov.kickstart(params[:hostname])
+  if ! response.nil?
+    return response
+  else
+    status 404
+  end
+end
+
 get '/api/deploy/preseed/:hostname' do
   response = $prov.preseed(params[:hostname])
   if ! response.nil?
@@ -811,8 +839,14 @@ post '/api/deploy/callback/:hostname/deployed' do
   end
 end
 
-get '/image/default/:file' do
-  file = File.join($conf.image_dir, params[:file])
+get '/image/debian/:file' do
+  file = File.join($conf.deb_image_dir, params[:file])
+  puts file
+  send_file( file )
+end
+
+get '/image/redhat/:file' do
+  file = File.join($conf.red_image_dir, params[:file])
   puts file
   send_file( file )
 end

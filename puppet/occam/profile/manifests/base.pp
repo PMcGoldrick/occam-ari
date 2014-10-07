@@ -52,7 +52,7 @@ class profile::base (
   $ntp_servers = [ '0.us.pool.ntp.org', '1.us.pool.ntp.org' ],
   $purge_sudo = false,
   $monitoring = false,
-  $deb        = [ 'profile::system::debian', 'apt::unattended_upgrades' ],
+  $deb        = ['profile::system::debian', 'apt::unattended_upgrades'],
 ) {
 
   include stdlib

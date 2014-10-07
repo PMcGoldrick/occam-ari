@@ -1,0 +1,10 @@
+#!ipxe
+echo Node: <%= "#{hostname} (#{mac})" %>
+echo Role: <%= role.role %>
+echo State: <%= state %>
+
+sleep 3
+kernel <%= http_endpoint %>/image/default/vmlinuz
+  IPAPPEND 2
+  append ksdevice=bootif load_ramdisk=1 initrd= <%= http_endpoint %>/image/default/initrd.img network ks=<%= http_endpoint %>/api/deploy/kickstart/<%= hostname %> || goto error
+boot
