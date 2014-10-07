@@ -4,6 +4,6 @@ echo Role: <%= role.role %>
 echo State: <%= state %>
 
 sleep 3
-kernel <%= http_endpoint %>/image/default/linux BOOTIF=<%= mac %> url=<%= http_endpoint %>/api/deploy/preseed/<%= hostname %> netcfg/choose_interface=auto priority=critical || goto error
-initrd <%= http_endpoint %>/image/default/initrd.gz || goto error
+kernel <%= http_endpoint %>/image/ubuntu/linux BOOTIF=<%= mac %> url=<%= http_endpoint %>/api/deploy/preseed/<%= hostname %> netcfg/choose_interface=auto priority=critical || goto error
+initrd <%= http_endpoint %>/image/ubuntu/initrd.gz || goto error
 boot

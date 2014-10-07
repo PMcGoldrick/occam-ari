@@ -27,6 +27,7 @@
 #
 # Kamil Swiatkowski <kswiatkowski@mirantis.com>
 # Damian Szeluga <dszeluga@mirantis.com>
+# Ari Saha <as754m@att.com>
 #
 # === Copyright
 #
@@ -63,6 +64,7 @@ def create_db_schema
     primary_key :id
     String :role, :unique=>true
     String :puppet_class, :unique=>true
+    String :os
     Fixnum :max
     Fixnum :min
     Fixnum :count, :default=>0
@@ -120,10 +122,10 @@ class Configuration
   attr_reader :environment
   attr_reader :ops_mac
   attr_reader :ops_ip
-  attr_reader :deb_template_dir
-  attr_reader :red_template_dir
-  attr_reader :deb_image_dir
-  attr_reader :red_image_dir
+  attr_reader :ubuntu_template_dir
+  attr_reader :redat_template_dir
+  attr_reader :ubuntu_image_dir
+  attr_reader :fedora_image_dir
   attr_reader :http_endpoint
   attr_reader :root_password
   attr_reader :sinatra_lock
@@ -137,7 +139,7 @@ class Configuration
   attr_reader :reserved_vip_ips
   attr_reader :puppet_initial_runs
   #in hiera files
-  attr_reader :roles  
+  attr_reader :roles
   attr_reader :priv_interface
   attr_reader :vm_base
   attr_reader :starting_ip_mgmt
@@ -199,7 +201,7 @@ class Configuration
     if @node_template.nil?
       @node_template = 'default'
     end
-    
+
     if @occamengine_dir.nil?
       @occamengine_dir = '/opt/ocamengine'
     end
@@ -207,7 +209,7 @@ class Configuration
     if @domain.nil?
       @domain = ''
     end
-    
+
     if @db_uri.nil?
       @db_uri = "sqlite://#{@occamengine_dir}/db/occamengine.db"
     end
@@ -222,13 +224,13 @@ class Configuration
       @puppet_initial_runs = 5
     end
 
-    @deb_template_dir = "#{@occamengine_dir}/pxe/debian/templates"
-    @red_template_dir = "#{@occamengine_dir}/pxe/redhat/templates"
-    @deb_image_dir = "#{@occamengine_dir}/pxe/debian/image"
-    @red_image_dir = "#{@occamengine_dir}/pxe/redhat/image"
+    @ubuntu_template_dir = "#{@occamengine_dir}/pxe/ubuntu/templates"
+    @fedora_template_dir = "#{@occamengine_dir}/pxe/fedora/templates"
+    @ubuntu_image_dir = "#{@occamengine_dir}/pxe/ubuntu/image"
+    @fedora_image_dir = "#{@occamengine_dir}/pxe/fedora/image"
 
     if @roles['ops'] == nil
-      @roles['ops'] = {:maximum => 1, :minimum => 1, :macs => @ops_mac, :priority => 1}
+      @roles['ops'] = {:maximum => 1, :minimum => 1, :macs => @ops_mac, :priority => 1, :os => 'ubuntu'}
     end
 
     @log, @loghttp = configure_logger
@@ -447,10 +449,11 @@ class DataBase
         role.min = v[:maximum]
         role.max = v[:maximum]
         role.priority = v[:priority]
+        role.os = v[:os]
         role.puppet_class = role_puppet_class
         role.save_changes
       rescue Exception => e 
-        role = Role.new(:role => k, :priority => v[:priority], :max => v[:maximum], :min => v[:minimum], :puppet_class => role_puppet_class)
+        role = Role.new(:role => k, :priority => v[:priority], :os => v[:os], :max => v[:maximum], :min => v[:minimum], :puppet_class => role_puppet_class)
         role.save
       end
     end
@@ -607,12 +610,20 @@ class Provisioner
     node.save
     b = node.get_binding
     b.eval("#{:http_endpoint} = '#{$conf.http_endpoint}'")
-    return ERB.new(File.new("#{$conf.template_dir}/boot_install.erb").read).result(b)
-   end
+    if node.role.os == 'ubuntu'
+      return ERB.new(File.new("#{$conf.ubuntu_template_dir}/ubuntu_install.erb").read).result(b)
+    elsif node.role.os == 'fedora'
+      return ERB.new(File.new("#{$conf.fedora_template_dir}/fedora_install.erb").read).result(b)
+    end
+  end
 
   def boot_local(node)
     $conf.log.info "Node #{node.hostname} (#{node.mac}) booting from local disk"
-    return ERB.new(File.new("#{$conf.template_dir}/boot_local.erb").read).result(node.get_binding)
+    if node.role.os == 'ubuntu'
+      return ERB.new(File.new("#{$conf.ubuntu_template_dir}/boot_local.erb").read).result(node.get_binding)
+    elsif node.role.os == 'fedora'
+      return ERB.new(File.new("#{$conf.fedora_template_dir}/boot_local.erb").read).result(node.get_binding)
+   end
   end
 
   def kickstart(hostname)
@@ -623,7 +634,7 @@ class Provisioner
       b.eval("#{:http_endpoint} = '#{$conf.http_endpoint}'")
       b.eval("#{:root_password} = '#{$conf.root_password}'")
       b.eval("#{:ops_ip} = '#{$conf.ops_ip}'")
-      return ERB.new(File.new("#{$conf.template_dir}/kickstart.erb").read).result(b)
+      return ERB.new(File.new("#{$conf.fedora_template_dir}/kickstart.erb").read).result(b)
     rescue Exception => e 
       $conf.log.debug e.message
       return nil
@@ -638,7 +649,7 @@ class Provisioner
       b.eval("#{:http_endpoint} = '#{$conf.http_endpoint}'")
       b.eval("#{:root_password} = '#{$conf.root_password}'")
       b.eval("#{:ops_ip} = '#{$conf.ops_ip}'")
-      return ERB.new(File.new("#{$conf.template_dir}/preseed.erb").read).result(b)
+      return ERB.new(File.new("#{$conf.ubuntu_template_dir}/preseed.erb").read).result(b)
     rescue Exception => e 
       $conf.log.debug e.message
       return nil
@@ -699,7 +710,11 @@ class Provisioner
       node = Node.first!(:hostname => hostname)
       b = node.get_binding
       b.eval("#{:environment} = '#{$conf.environment}'")
-      return ERB.new(File.new("#{$conf.template_dir}/puppetconf.erb").read).result(b)
+      if node.role.os == 'ubuntu'
+        return ERB.new(File.new("#{$conf.ubuntu_template_dir}/puppetconf.erb").read).result(b)
+      elsif node.role.os == 'fedora'
+        return ERB.new(File.new("#{$conf.fedora_template_dir}/puppetconf.erb").read).result(b)
+      end
     rescue Exception => e 
       $conf.log.debug e.message
       return nil
@@ -839,13 +854,13 @@ post '/api/deploy/callback/:hostname/deployed' do
   end
 end
 
-get '/image/debian/:file' do
+get '/image/ubuntu/:file' do
   file = File.join($conf.deb_image_dir, params[:file])
   puts file
   send_file( file )
 end
 
-get '/image/redhat/:file' do
+get '/image/fedora/:file' do
   file = File.join($conf.red_image_dir, params[:file])
   puts file
   send_file( file )
