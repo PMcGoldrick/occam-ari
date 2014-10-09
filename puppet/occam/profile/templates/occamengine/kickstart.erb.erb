@@ -26,15 +26,15 @@ user --name=ops --plaintext --password foundry123
 
 part /boot --fstype ext4 --size=200 --ondisk=sda
 part pv.1 --size=1 --grow --ondisk=sda
-part pv.2 --size=1 --grow --ondisk=sdb
+#part pv.2 --size=1 --grow --ondisk=sdb
 
 volgroup sys pv.1
 logvol swap --fstype swap --name=swap --vgname=sys --size=2048
 logvol / --fstype ext4 --name=root --vgname=sys --size=5120
 logvol /opt --fstype ext4 --name=opt --vgname=sys --size=1 --grow
 
-volgroup data pv.2
-logvol /var --fstype ext4 --name=var --vgname=data --size=1 --grow
+#volgroup data pv.2
+#logvol /var --fstype ext4 --name=var --vgname=data --size=1 --grow
 
 # Installing packages
 %packages --nobase
@@ -62,7 +62,7 @@ ts=`date +%FTT%z`
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDClw104J9CPCOqseM9wzfiUyWrtO+djQtf7bEL2APB3+XG2xCdUVWCCFFB+cwDqujE8wGXI4etzIQVw7Vyj27zwNGO+te3Kn2La9IU+dpnqKX6+Nd8ekzRiDokEs396warmD5ui1BOY7YxYPfbbtuhPsjAdsDEXQNodW3IqjxxKfJcHFEw5VM7fa1uBudj8eO32gPLOy818lz5/WG0ekQ/qd3OGX/X6rfRHwSJqJrEARWcM1XOFbkL+9dTGtpb8T44LEYoiAiaHfMFOWXoULBNGFlN6Qut9kngBK3TX51l5VofZUsLS7OKfggXZQwe88vjY7I4L7xr0hYGbpn23EYl ari@Aris-MacBook-Pro.local
 EOF
 
-yum -y install python-pip
+yum -y install python-pip wget
 pip install hfcca
 
 # set PS
