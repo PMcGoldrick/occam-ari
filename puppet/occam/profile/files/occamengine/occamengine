@@ -146,7 +146,7 @@ class Configuration
   attr_reader :loghttp
 
   def initialize
-    
+
     #set config and init from command line opts
     @config = '/etc/occam/occamengine.yaml'
     @init = false
@@ -166,7 +166,7 @@ class Configuration
     else
       @zone = `hostname -f `.split(".")[1]
     end
-    
+
     # set environment
     if File.exists?('/etc/occam/environment')
       @environment = File.read('/etc/occam/environment').chop
@@ -198,7 +198,7 @@ class Configuration
     if @node_template.nil?
       @node_template = 'default'
     end
-    
+
     if @occamengine_dir.nil?
       @occamengine_dir = '/opt/ocamengine'
     end
@@ -206,7 +206,7 @@ class Configuration
     if @domain.nil?
       @domain = ''
     end
-    
+
     if @db_uri.nil?
       @db_uri = "sqlite://#{@occamengine_dir}/db/occamengine.db"
     end
@@ -252,7 +252,7 @@ class Configuration
     #puts merged_yaml.inspect
     return merged_yaml
   end
-  
+
   def configure_logger
     Logger.class_eval { alias :write :'<<' }
     if STDOUT.tty?
@@ -633,7 +633,7 @@ class Provisioner
       return nil
     end
   end
-  
+
   def kickstart(hostname)
     begin
       $conf.log.debug "Serving kickstart for #{hostname}"
@@ -751,7 +751,7 @@ class Provisioner
     end
   end
 
-end #class Pxe
+end #class Provisioner
 
 
 $prov = Provisioner.new()
