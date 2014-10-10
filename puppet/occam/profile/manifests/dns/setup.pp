@@ -45,7 +45,7 @@
 
 class profile::dns::setup (
   $hostnames  = [],
-  $ip = "%{::ipaddress_eth0}",
+  $ip = $::ipaddress_eth0,
 ) {
 
   $host_aliases = flatten([$::hostname, $hostnames])
