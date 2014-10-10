@@ -36,5 +36,5 @@
 class role::initial {
   include profile::puppet::agent
   include profile::mcollective
-  include ::network
+  include profile::network
 }
